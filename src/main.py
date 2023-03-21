@@ -1,13 +1,20 @@
 # Simple Simulation of a cochlea implant
 # ecsuka <ecsuka@ethz.ch>
-# Developed and tested with Python 3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49)
+# Developed and tested with Python 3.10.6
+# (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49)
 
-from scipy import signal
 import numpy as np
+from scipy import signal
+
 from audio import Audio
 
 
 def cochlear_implant_simulation(audio):
+    """Performs the CI Simulation and saves the output file
+
+    Args:
+        audio (Audio): Audio class containing the data
+    """
     # set parameters for the cochlear implant simulation
     f_min = 200  # Hz
     f_max = 5000  # Hz
@@ -15,10 +22,14 @@ def cochlear_implant_simulation(audio):
     step_size = 20  # ms
     n_out_of_m = 1
 
-    audio_data = audio.getMono().astype(np.float64)
+    audio_data = audio.get_mono().astype(np.float64)
 
     # Array of logarithmically spaced frequency bands between f_min and f_max
-    freq_bands = np.logspace(np.log10(f_min), np.log10(f_max), num=num_electrodes + 1)
+    freq_bands = np.logspace(
+        np.log10(f_min),
+        np.log10(f_max),
+        num=num_electrodes + 1
+        )
 
     # Compute the FFT of the input audio signal
     fft_data = np.fft.fft(audio_data)
@@ -72,7 +83,13 @@ def cochlear_implant_simulation(audio):
     # Simple low-pass filter simulating the ear canal
     # Removes a bit of the "underwater" effect, but isn't perfect
     lowpass_cutoff = 1000  # Hz
-    sos = signal.butter(2, lowpass_cutoff, btype="low", fs=audio.rate, output="sos")
+    sos = signal.butter(
+        2,
+        lowpass_cutoff,
+        btype="low",
+        fs=audio.rate,
+        output="sos"
+        )
     audio_processed = signal.sosfilt(sos, audio_processed)
 
     # Save the processed audio as a WAV file
@@ -80,6 +97,6 @@ def cochlear_implant_simulation(audio):
 
 
 if __name__ == "__main__":
-    PATH = "./SoundData/a1.wav"
+    # Main runner
     audio = Audio()
     cochlear_implant_simulation(audio)

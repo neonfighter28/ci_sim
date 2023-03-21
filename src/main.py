@@ -1,5 +1,7 @@
-# Simple Simulation of a cochlea implant
-# ecsuka <ecsuka@ethz.ch>
+# Simple Simulation of a cochlea implant using FFT
+# Authors: ecsuka <ecsuka@ethz.ch> and others
+# v1.0.0 (21.03.23)
+# Run with `$ python main.py`
 # Developed and tested with Python 3.10.6
 # (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49)
 
@@ -9,20 +11,40 @@ from scipy import signal
 from audio import Audio
 
 
-def cochlear_implant_simulation(audio):
-    """Performs the CI Simulation and saves the output file
-
-    Args:
-        audio (Audio): Audio class containing the data
+def cochlear_implant_simulation():
     """
+    Performs the CI Simulation on the input audio and saves the output as a
+    WAV file.
+
+    The strategy used simulates a cochlear implant by compressing the audio
+    into a number of frequency bands, equal to the number of electrodes, spaced
+    logarithmically, as to mimic the human ear, then applying the n-out-of-m
+    strategy to select the most dominant frequency bands. At last, the audio is
+    normalized and filtered using a low-pass filter to simulate the ear canal.
+
+    This consists of the following steps:
+    1. Convert the input to mono and compute its FFT
+    2. Generate the frequency bands
+    3. Compute the total power for every frequency band
+    4. Apply the n-out-of m strategy, whereby we select the most dominant bands
+       Note that this can be disabled by changing the parameter use_n_out_of_m
+    5. Remove the bands that arent in the top n_out_of_m
+    6. Compute the inverse FFT to get the processed audio signal
+    7. Normalize the audio and apply the low-pass filter
+    8. Save the audio to a WAV-file
+    """
+
+    audio = Audio()
+
     # set parameters for the cochlear implant simulation
+    use_n_out_of_m = True
     f_min = 200  # Hz
     f_max = 5000  # Hz
     num_electrodes = 20
     step_size = 20  # ms
-    n_out_of_m = 1
+    n_out_of_m = 12 if use_n_out_of_m else num_electrodes
 
-    audio_data = audio.get_mono().astype(np.float64)
+    audio_data = audio.mono.astype(np.float64)
 
     # Array of logarithmically spaced frequency bands between f_min and f_max
     freq_bands = np.logspace(
@@ -93,10 +115,9 @@ def cochlear_implant_simulation(audio):
     audio_processed = signal.sosfilt(sos, audio_processed)
 
     # Save the processed audio as a WAV file
-    audio.save("./out_fft.wav", audio_processed)
+    audio.save(audio_processed)
 
 
 if __name__ == "__main__":
     # Main runner
-    audio = Audio()
-    cochlear_implant_simulation(audio)
+    cochlear_implant_simulation()

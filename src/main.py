@@ -5,16 +5,20 @@
 # Developed and tested with Python 3.10.6
 # (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49)
 
+####### VOLUME WARNING #######
+# Because of STFT transformation artifacts the audio may be unpleasant to
+# listen to!
+####### VOLUME WARNING #######
+
 import numpy as np
 from scipy import signal
 
 from audio import Audio
 
 
-def cochlear_implant_simulation():
+def cochlear_implant_simulation(slice: np.ndarray, rate: int):
     """
-    Performs the CI Simulation on the input audio and saves the output as a
-    WAV file.
+    Performs the CI Simulation on the input audio and returns the output audio
 
     The strategy used simulates a cochlear implant by compressing the audio
     into a number of frequency bands, equal to the number of electrodes, spaced
@@ -30,13 +34,18 @@ def cochlear_implant_simulation():
        Note that this can be disabled by changing the parameter use_n_out_of_m
     5. Remove the bands that arent in the top n_out_of_m
     6. Compute the inverse FFT to get the processed audio signal
-    7. Normalize the audio and apply the low-pass filter
-    8. Save the audio to a WAV-file
+    7. Apply the low-pass filter
+    8. Return audio
+
+    Args:
+        slice (np.ndarray): Audio data for slice
+        rate (int): audio rate
+
+    Returns:
+        np.ndarray: Processed audio data
     """
 
-    audio = Audio()
-
-    # set parameters for the cochlear implant simulation
+    # Set parameters for the cochlear implant simulation
     use_n_out_of_m = True
     f_min = 200  # Hz
     f_max = 5000  # Hz
@@ -44,20 +53,16 @@ def cochlear_implant_simulation():
     step_size = 20  # ms
     n_out_of_m = 12 if use_n_out_of_m else num_electrodes
 
-    audio_data = audio.mono.astype(np.float64)
+    audio_data = slice
 
     # Array of logarithmically spaced frequency bands between f_min and f_max
-    freq_bands = np.logspace(
-        np.log10(f_min),
-        np.log10(f_max),
-        num=num_electrodes + 1
-        )
+    freq_bands = np.logspace(np.log10(f_min), np.log10(f_max), num=num_electrodes + 1)
 
     # Compute the FFT of the input audio signal
     fft_data = np.fft.fft(audio_data)
 
     # Get the frequency axis
-    freqs = np.fft.fftfreq(audio_data.size, 1 / audio.rate)
+    freqs = np.fft.fftfreq(audio_data.size, 1 / rate)
 
     # Process the FFT data by selecting the top n_out_of_m frequency bands
     # Allocate memory
@@ -100,24 +105,28 @@ def cochlear_implant_simulation():
 
     # Normalize the audio to prevent it from being too loud
     # By dividing it through its max abs value
-    audio_processed = audio_processed / np.max(np.abs(audio_processed))
+    # audio_processed = audio_processed / np.max(np.abs(audio_processed))
 
     # Simple low-pass filter simulating the ear canal
     # Removes a bit of the "underwater" effect, but isn't perfect
     lowpass_cutoff = 1000  # Hz
-    sos = signal.butter(
-        2,
-        lowpass_cutoff,
-        btype="low",
-        fs=audio.rate,
-        output="sos"
-        )
+    sos = signal.butter(2, lowpass_cutoff, btype="low", fs=rate, output="sos")
     audio_processed = signal.sosfilt(sos, audio_processed)
 
     # Save the processed audio as a WAV file
-    audio.save(audio_processed)
+    return audio_processed
 
 
 if __name__ == "__main__":
-    # Main runner
-    cochlear_implant_simulation()
+    # Increase step size to lower impact of STFT artifacts
+    step_size = 20  # ms
+    audio = Audio()
+
+    # split audio
+    slices = audio.split_aud(step_size)
+    # simulate
+    audio_processed = np.concatenate(
+        [cochlear_implant_simulation(slice, audio.rate) for slice in slices]
+    )
+
+    audio.save(audio_processed / np.max(np.abs(audio_processed)))

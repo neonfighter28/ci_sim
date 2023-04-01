@@ -13,6 +13,7 @@ class Audio:
         rate (int): The sampling rate of the audio file, in Hz.
         data (np.ndarray): The audio data, as an array of samples.
     """
+
     rate: int
     data: np.ndarray
 
@@ -41,7 +42,8 @@ class Audio:
         else:
             print("Unsupported file format")
             return
-        self.data = data
+        # convert to mono
+        self.data = data if len(data.shape) == 1 else data[:, 0]
         self.rate = rate
 
     def save(self, data: np.ndarray) -> None:
@@ -54,23 +56,26 @@ class Audio:
         path = asksaveasfilename(
             defaultextension=".wav",
             initialfile="fft_out.wav",
-            filetypes=[("WAV files", ".wav")]
-            )
+            filetypes=[("WAV files", ".wav")],
+        )
         wavfile.write(path, self.rate, data)
 
-    @property
-    def mono(self) -> np.ndarray:
-        """
-        Returns a mono audio channel, without altering the original audio data.
+    def split_aud(self, stepsize: int) -> list[np.ndarray]:
+        """Splits audio into parts of length stepsize
 
-        If the audio data is already mono, return the original data.
-        Otherwise, return only the first audio channel.
+        Args:
+            step_size(int): step size in ms
 
         Returns:
-            np.ndarray: An array of audio data,
-                        representing a single audio channel.
+            list[np.ndarray]: Audio slices
         """
-        if len(self.data.shape) == 1:
-            return self.data
-        else:
-            return self.data[:, 0]
+        # Calculate amount of samples in step size interval
+        step_size_samples = int(self.rate * stepsize / 1000)
+
+        # Split audio data into sub-arrays of step size interval
+        audio_slices = [
+            self.data[i : i + step_size_samples]
+            for i in range(0, len(self.data), step_size_samples)
+        ]
+
+        return audio_slices

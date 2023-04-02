@@ -1,5 +1,5 @@
 pydub
 numpy
 matplotlib
-scipy
+scikit-learn
 tkinter

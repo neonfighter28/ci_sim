@@ -122,7 +122,6 @@ def cochlear_implant_simulation(slice: np.ndarray):
     return audio_processed
 
 
-
 def simulate_slices(slices):
     # Threading
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(slices)) as executor:

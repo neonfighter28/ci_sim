@@ -137,5 +137,5 @@ if __name__ == "__main__":
     slices = audio.split_aud(STEP_SIZE)
     # simulate
     audio_processed = simulate_slices(slices)
-
+    audio_processed = np.concatenate(audio_processed)
     audio.save(audio_processed)

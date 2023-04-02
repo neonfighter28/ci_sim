@@ -30,7 +30,7 @@ class Audio:
         """
         path = askopenfilename(
             initialdir="./SoundData",
-            filetypes=[("WAV files", ".wav"), ("MP3 files", ".mp3")],
+            filetypes=[("Audio files", ".mp3 .wav")],
         )
         # Read audio file
         if path.endswith(".wav"):

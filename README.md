@@ -1,5 +1,7 @@
-# CI-Sim
-Simple cochlear implant simulation in python using FFT
+# CSSS ETHZ Projects
+ci_sim: Simple cochlear implant simulation in python using FFT
+
+vest_impl: Simulation of a Vestibular Implant in Python
 
 # Requirements
 Install requirements using pip
@@ -7,5 +9,5 @@ Install requirements using pip
 
 # Run
 
-`cd src`
+`cd SRCDIR`
 `python main.py`

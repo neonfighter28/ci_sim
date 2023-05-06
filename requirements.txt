@@ -2,4 +2,4 @@ pydub
 numpy
 matplotlib
 scikit-learn
-tkinter
+scikit-kinematics-0.8.8.tar.gz

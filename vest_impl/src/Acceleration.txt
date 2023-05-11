@@ -1,0 +1,1 @@
+Maximum Acceleration : 6.870260679053985;   Minimum Acceleration : -5.629895107196462;

@@ -15,45 +15,46 @@ Developed and tested with Python 3.8.5
 # Import required packages
 from functions import *
 import os
-
+from tkinter.filedialog import askopenfilename
+from Canals import Canals
+from skinematics.sensors.xsens import XSens
 
 def main():
     # step 1: reading in the data
-    in_data, Canals = read_in_data(f"{os.getcwd()}\Walking_02.txt")
+    sensor = XSens(askopenfilename())
     # step 2: get the orientation of the sensor and adjust the sensor data accordingly
-    sensor_orientation = get_sensor_orientation(in_data.get("acc")[0])
-    omegas_globaly = adjust_sensor_data(in_data.get("omega"), sensor_orientation)
-    acc_globaly = adjust_sensor_data(in_data.get("acc"), sensor_orientation)
+    sensor_orientation = get_sensor_orientation(sensor.acc[0])
+    omegas_globally = adjust_sensor_data(sensor.omega, sensor_orientation)
+    acc_globaly = adjust_sensor_data(sensor.acc, sensor_orientation)
     # step 3: get the global orientation of the right horizontal scc
-    r_scc_globaly = get_orientation_of_r_scc(15,Canals.get("right")[0])
+    r_scc_globaly = get_orientation_of_r_scc(15, Canals.right[0])
     # step 4: calculate the stimulation of the cupula
-    stimulation = get_stimulation(omegas_globaly, r_scc_globaly)
+    stimulation = get_stimulation(omegas_globally, r_scc_globaly)
     # step 5: get the canal transfer function
     canal_transfer_function = get_canal_transfer_function()
     # step 6: calculate the max and min deflection of the cupula
-    max_deflection, min_deflection = get_max_min_deflection(canal_transfer_function, stimulation, in_data.get("rate"))
+    max_deflection, min_deflection = get_max_min_deflection(canal_transfer_function, stimulation, sensor.rate)
     # step 7: calculate the max and min stimulation of the otolith
     max_otolith_stimulation, min_otolith_stimulation = get_max_min_otolith_stimulation(acc_globaly)
     # step 8: calculate the nose orientation
-    nose_orientation = get_nose_orientation(omegas_globaly, in_data.get("rate"))
+    nose_orientation = get_nose_orientation(omegas_globally, sensor.rate)
 
     # Saving the max. and min. cupular displacement in the Text File "CupularDisplacement"
-    CupularDisplacement = open("CupularDisplacement.txt", "w")
-    CupularDisplacement.write("Maximum Cupular Displacement :")
-    CupularDisplacement.write(str(max_deflection))
-    CupularDisplacement.write(";    Minimum Cupular Displacement: ")
-    CupularDisplacement.write(str(min_deflection))
-    CupularDisplacement.write(";")
-    CupularDisplacement.close()
-
+    with open("CupularDisplacement.txt", "w+") as f:
+        f.write(f"""
+        Maximum Cupular Displacement
+        {max_deflection}
+        Minimum Cupular Displacement
+        {min_deflection}
+        """)
     # Saving the max. and min. acceleration in the Text File "Acceleration"
-    Acceleration = open("Acceleration.txt", "w")
-    Acceleration.write("Maximum Acceleration : ")
-    Acceleration.write(str(max_otolith_stimulation))
-    Acceleration.write(";   Minimum Acceleration : ")
-    Acceleration.write(str(min_otolith_stimulation))
-    Acceleration.write(";")
-    Acceleration.close()
+    with open("Acceleration.txt", "w+") as f:
+        f.write(f"""
+        Maximum Acceleration:
+        {max_otolith_stimulation}
+        Minimum Acceleration:
+        {min_otolith_stimulation}""")
+
 
     # Printing the nose_orientation, which was calculated in step 8
     print(f"The resulting nose orientation is : {nose_orientation};")

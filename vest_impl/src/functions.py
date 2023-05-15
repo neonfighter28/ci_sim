@@ -3,44 +3,9 @@ import pandas as pd
 from skinematics import vector
 from skinematics import quat
 from skinematics import rotmat
+from skinematics.sensors.xsens import XSens
 from scipy import signal
 from scipy.constants import g
-
-
-def read_in_data(file_path):
-    """
-    Extracting the data from the file "Walking_02.txt" from the current directory. The data of the sensor and the
-    coordinates of the ear canals get returned as dictionaries.
-    """
-    fh = open(file_path)
-    fh.readline()
-    line = fh.readline()
-    rate = np.float64(line.split(':')[1].split('H')[0])
-    fh.close()
-    data = pd.read_csv(file_path, sep='\t', skiprows=4, index_col=False)
-    # Extracting the columns
-    in_data = {'rate': rate,
-               'acc': data.filter(regex='Acc').values,
-               'omega': data.filter(regex='Gyr').values,
-               'mag': data.filter(regex='Mag').values}
-    Canals = {
-        'info': 'The matrix rows describe ' +
-                'horizontal, anterior, and posterior canal orientation',
-        'right': np.array(
-            [[0.32269, -0.03837, -0.94573],
-             [0.58930, 0.78839, 0.17655],
-             [0.69432, -0.66693, 0.27042]]),
-        'left': np.array(
-            [[-0.32269, -0.03837, 0.94573],
-             [-0.58930, 0.78839, -0.17655],
-             [-0.69432, -0.66693, -0.27042]])}
-
-    # Normalizing these vectors
-    for side in ['right', 'left']:
-        Canals[side] = (Canals[side].T / np.sqrt(np.sum(Canals[side] ** 2, axis=1))).T
-
-    return in_data, Canals
-
 
 def get_sensor_orientation(acc_data):
     """

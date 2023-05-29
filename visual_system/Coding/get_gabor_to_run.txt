@@ -1,0 +1,37 @@
+The module "gabor_demo.py" can be used to find suitable values for the
+Gabor-filters.
+
+Since the latest Anaconda-distribution of Python has some problems with
+Tkinter, you can either
+
+    i) bypass those problems, by implementing the changes suggested below. Or
+    ii) alternatively, you can start with the parameter values that I used for my own solution of the problem:
+        (lambda_factor=2, nstds=2, numPts=51, psi=np.pi/2, gamma=0.5)
+
+Solving the Tkinter-Problems in Anaconda
+----------------------------------------
+
+In the module "gabor_demo.py" I make use of tkinter, through calling the
+submodule "misc" in the package "scikit-sound". (The only reason I do is is
+because the package "easygui" did not run on OSX, because of a bug in the
+Tkinter-implementation on Mac.)
+
+Now the current version of Anaconda is built using Tcl 8.6.8, but the
+init-files say that version 8.6.9 is required. Since there is no easy way to
+upgrade the installation, you can fix the problem by changing two ini-files.
+So far I have seen no negative side-effects.
+
+Specifically, change
+C:\ProgramData\Anaconda3\tcl\tcl8.6\init.tcl
+Line 19
+to
+    package require -exact Tcl 8.6.8
+
+and in
+C:\ProgramData\Anaconda3\tcl\tk8.6\tk.tcl
+change Line 14 to
+    package require -exact Tk  8.6.8
+
+Alternatively, change the file-selection in
+gabor_demo.py
+such that you don't use Tkinter (or any programs that depend on it).

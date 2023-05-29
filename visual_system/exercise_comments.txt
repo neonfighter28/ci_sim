@@ -1,0 +1,28 @@
+Below you find a step by step description of the algorithm:
+
+With a display with
+    - size of 1400 pix
+    - diameter of 30 cm
+    - at a distance of 60 cm
+my setup is such that one pixel corresponds to 1.2278 arcmin.
+With the radius of the eye 1.25 cm, this yields an
+eccentricity_per_pixel = 0.0045 [mm]
+
+Let's assume that I choose my fixation point such that the distance from
+that fixation point to the furthest corner is 1000 pixels.
+If I divide the image into 10 zones, my innermost area has an average radius
+of 50 pixels (half of 0 and 100).
+This corresponds to an average eccentricity of 0.2 mm on the fovea.
+
+Since my image filters must have an integer length (n pixels to to the left
+and the right of the filter center)
+    filterLength = 2 * ceil(sizeReceptiveField/2)
+produces an image filter with an even number of pixels, as required.
+Note that now all values are expresses as pixels!
+
+With the equation for the receptive field given
+    (exp(-r2/(2*sig1^2))/sig1 - exp(-r2/(2*sig2^2))/sig2) / sqrt(2*pi)
+
+we can now calculate the image filter, and apply it (with imFilter) to the
+image.
+

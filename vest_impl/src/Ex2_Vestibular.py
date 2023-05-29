@@ -55,7 +55,6 @@ def main():
         Minimum Acceleration:
         {min_otolith_stimulation}""")
 
-
     # Printing the nose_orientation, which was calculated in step 8
     print(f"The resulting nose orientation is : {nose_orientation};")
 

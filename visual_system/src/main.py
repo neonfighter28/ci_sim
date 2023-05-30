@@ -127,7 +127,7 @@ def make_zones_and_filters(myImg):
     Zones = np.floor(RadFromFocus / rMax * numZones).astype(np.uint8)
     Zones[Zones == numZones] = numZones - 1  # eliminate the few maximum radii
     # Generate numZones filters, and save them to the list "Filters"
-    #np.set_printoptions(threshold=sys.maxsize)
+    np.set_printoptions(threshold=sys.maxsize)
     #print(Zones)
     Filters = list()
 
@@ -156,12 +156,12 @@ def make_zones_and_filters(myImg):
         sigma_2 = sigma_1 * 1.6
 
         # constructing convolution matrix of DOG
-        h = 10  # height
+        h = 30  # height
         DOG_matrix = np.zeros((h, h))  # grid
         for i in range(0, h):
             for j in range(0, h):
-                x = i #- h/2
-                y = j #- h/2
+                x = i - h/2
+                y = j - h/2
                 DOG_matrix[i, j] = DOG(x, y, sigma_1, sigma_2)
 
         curFilter = DOG_matrix
@@ -196,18 +196,19 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         m_height, m_width = myImg.size
         # pad so we don't get an out of bound exception
         padded = np.pad(myImg.data, (k_size-1, k_size-1))
-        plt.imshow(padded, "gray")
+
+        #plt.imshow(np.array(padded).reshape((m_height+2*k_size-2, m_width+2*k_size-2)), "gray")
+        #plt.show()
         
         # iterates through matrix, applies kernel of correct zone, and sums
         im_out = []
         for i in range(m_height):
             for j in range(m_width):
                 kernel = Filters[Zones[i, j]]
-                im_out.append(np.sum(padded[i:k_size+i, j:k_size+j]*kernel))
-
+                im_out.append(np.sum(padded[k_size-1 + i:(2*k_size)+i -1, k_size-1 + j:(2*k_size)+j -1] * kernel))
+        
         im_out = np.array(im_out).reshape((m_height, m_width))
         
-
         return im_out
 
 def main(in_file=None):

@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 from skimage import color
+import math
+import sys
 
 class MyImages:
     """Reading, writing, and filtering of images"""
@@ -31,7 +33,6 @@ class MyImages:
 
         Methods:
         --------
-        - apply_filters
         - save
 
         """
@@ -83,6 +84,12 @@ class MyImages:
 #Step 1: Using original image, apply Gabor filters in different orientations (0 - 30 - 60 - 90 - 120 - 150 deg)
 
 ### functions for retinal activity
+def gaussian(x, y, sigma):
+    return (1.0 / (1 * math.pi * (sigma ** 2))) * math.exp(-(1.0 / (2 * (sigma ** 2))) * (x ** 2 + y ** 2))
+
+def DOG(x, y, sigma_1, sigma_2):
+    return gaussian(x, y, sigma_1) - np.abs(gaussian(x, y, sigma_2))
+
 def make_zones_and_filters(myImg):
     """Break up the image in "numZones" different circular regions about the
     chosen focus
@@ -120,6 +127,8 @@ def make_zones_and_filters(myImg):
     Zones = np.floor(RadFromFocus / rMax * numZones).astype(np.uint8)
     Zones[Zones == numZones] = numZones - 1  # eliminate the few maximum radii
     # Generate numZones filters, and save them to the list "Filters"
+    #np.set_printoptions(threshold=sys.maxsize)
+    #print(Zones)
     Filters = list()
 
     # ------------------- Here you have to find your own filters ------------
@@ -128,11 +137,12 @@ def make_zones_and_filters(myImg):
         # eccentricity = average radius in a zone, in pixel
         zoneRad = ( rMax / numZones * (ii + 0.5))  
         # MY CODE
-        #assume 1400px image = 30cm viewed from 60cm away
+        # assume 1400px image = 30cm viewed from 60cm away
         zoneRad_in_cm = (30 / 1400) * zoneRad
         view_distance = 60 #cm
         angle = np.arctan(zoneRad_in_cm / view_distance)
-        #radius of the eye is typically 125mm
+
+        # radius of the eye is typically 125mm
         circumference = 2 * np.pi * 125
         eccentricity = circumference / 360 * angle
         RFS = 6 * eccentricity #in arcmin
@@ -141,25 +151,27 @@ def make_zones_and_filters(myImg):
         
         next_largest_odd = RFS_in_pixels if (RFS_in_pixels % 2 == 1) else RFS_in_pixels + 1
 
-        #calculating DOG parameters based of RFS, keeping correct ratio of 1:1.6
+        # calculating DOG parameters based of RFS, keeping correct ratio of 1:1.6
         sigma_1 = next_largest_odd / 8
         sigma_2 = sigma_1 * 1.6
 
-        #  the "1/4" is arbitrary, just used to give a proper visual example
-        filter_length = np.rint( zoneRad / 4)  
+        # constructing convolution matrix of DOG
+        h = 30  # height
+        DOG_matrix = np.zeros((h, h))  # grid
+        for xi in range(0, h):
+            for yi in range(0, h):
+                x = xi - h / 2
+                y = yi - h / 2
+                DOG_matrix[xi, yi] = DOG(x, y, sigma_1, sigma_2)
 
-        # for Reasons of memory efficiency, limit filter size
-        filter_length = np.int32( min(81, filter_length))
+        curFilter = DOG_matrix
 
-        # normalize the filter
-        curFilter = ( np.ones((filter_length, filter_length)) / filter_length ** 2) 
-
+        #print(curFilter)
         Filters.append(curFilter)
-        print("filter_length %d: %g" % (ii, filter_length))
 
     return (Zones, Filters)
 
-def apply_filters(self, Zones, Filters, openCV=True):
+def apply_filters(myImg, Zones, Filters, openCV=True):
         """Applying the filters to the different image zones
         Input:
         ------
@@ -179,6 +191,21 @@ def apply_filters(self, Zones, Filters, openCV=True):
 
         # ------------------- Here you have to apply the filters ------------
 
+        # assuming kernel is symmetric and odd
+        k_size = len(Filters[0])
+        m_height, m_width = myImg.size
+        # pad so we don't get an out of bound exception
+        padded = np.pad(myImg.data, (k_size-1, k_size-1))
+        
+        # iterates through matrix, applies kernel of correct zone, and sums
+        im_out = []
+        for i in range(m_height):
+            for j in range(m_width):
+                kernel = Filters[Zones[i, j]]
+                im_out.append(np.sum(padded[i:k_size+i, j:k_size+j]*kernel))
+
+        im_out = np.array(im_out).reshape((m_height, m_width))
+
         return im_out
 
 def main(in_file=None):
@@ -188,12 +215,12 @@ def main(in_file=None):
     # Select the image, and perform the calculations
     myImg = MyImages(in_file)
     Zones, Filters = make_zones_and_filters(myImg)
-    filtered = myImg.apply_filters(Zones, Filters)
+    filtered = apply_filters(myImg, Zones, Filters)
 
     # Show the results
     plt.imshow(filtered, "gray")
     plt.show()
-    myImg.save(filtered)
+    #myImg.save(filtered)
     print("Done!")
 
 

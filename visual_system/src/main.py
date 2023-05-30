@@ -88,7 +88,7 @@ def gaussian(x, y, sigma):
     return (1.0 / (1 * math.pi * (sigma ** 2))) * math.exp(-(1.0 / (2 * (sigma ** 2))) * (x ** 2 + y ** 2))
 
 def DOG(x, y, sigma_1, sigma_2):
-    return gaussian(x, y, sigma_1) - np.abs(gaussian(x, y, sigma_2))
+    return gaussian(x, y, sigma_1) - gaussian(x, y, sigma_2)
 
 def make_zones_and_filters(myImg):
     """Break up the image in "numZones" different circular regions about the
@@ -156,13 +156,13 @@ def make_zones_and_filters(myImg):
         sigma_2 = sigma_1 * 1.6
 
         # constructing convolution matrix of DOG
-        h = 30  # height
+        h = 10  # height
         DOG_matrix = np.zeros((h, h))  # grid
-        for xi in range(0, h):
-            for yi in range(0, h):
-                x = xi - h / 2
-                y = yi - h / 2
-                DOG_matrix[xi, yi] = DOG(x, y, sigma_1, sigma_2)
+        for i in range(0, h):
+            for j in range(0, h):
+                x = i #- h/2
+                y = j #- h/2
+                DOG_matrix[i, j] = DOG(x, y, sigma_1, sigma_2)
 
         curFilter = DOG_matrix
 
@@ -196,6 +196,7 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         m_height, m_width = myImg.size
         # pad so we don't get an out of bound exception
         padded = np.pad(myImg.data, (k_size-1, k_size-1))
+        plt.imshow(padded, "gray")
         
         # iterates through matrix, applies kernel of correct zone, and sums
         im_out = []
@@ -205,6 +206,7 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
                 im_out.append(np.sum(padded[i:k_size+i, j:k_size+j]*kernel))
 
         im_out = np.array(im_out).reshape((m_height, m_width))
+        
 
         return im_out
 

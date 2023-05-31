@@ -67,6 +67,17 @@ class MyImages:
         self.focus = np.rint(selected_focus)[0].tolist()
         self.focus.reverse()  # for working with the data x/y's
         print(self.focus)
+    
+    def save(self, out_data):
+        """Save the resulting image to a PNG-file"""
+
+        in_stem = self.fileName.find(".")
+        out_file = self.fileName[:in_stem] + "_out.png"
+        try:
+            plt.imsave(out_file, out_data, cmap="gray")
+            print(f"Result saved to {out_file}")
+        except IOError:
+            print(f"Could not save {out_file}")
 
 
 
@@ -223,7 +234,7 @@ def main(in_file=None):
     # Show the results
     plt.imshow(filtered, "gray")
     plt.show()
-    #myImg.save(filtered)
+    myImg.save(filtered)
     print("Done!")
 
 

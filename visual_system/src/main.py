@@ -221,6 +221,40 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         im_out = np.array(im_out).reshape((m_height, m_width))
         
         return im_out
+    
+def gabor_filter(myImg):
+    
+    sigma  = 1
+    theta = 1
+    g_lambda = 2
+    psi = np.pi/2
+    gamma = 0.5
+
+    sigma_x = sigma
+    sigma_y = sigma/gamma
+    
+    # Boundingbox:
+    nstds = 2
+    xmax = max( abs(nstds*sigma_x * np.cos(theta)), abs(nstds*sigma_y * np.sin(theta)) )
+    ymax = max( abs(nstds*sigma_x * np.sin(theta)), abs(nstds*sigma_y * np.cos(theta)) )
+    
+    xmax = np.ceil(max(1,xmax))
+    ymax = np.ceil(max(1,ymax))
+    
+    xmin = -xmax
+    ymin = -ymax
+    
+    numPts = 51   
+    (x,y) = np.meshgrid(np.linspace(xmin, xmax, numPts), np.linspace(ymin, ymax, numPts) ) 
+    
+    # Rotation
+    x_theta =  x * np.cos(theta) + y * np.sin(theta)
+    y_theta = -x * np.sin(theta) + y * np.cos(theta)
+    gb_values = np.array(np.exp( -0.5* (x_theta**2/sigma_x**2 + y_theta**2/sigma_y**2) ) * \
+         np.cos( 2*np.pi/g_lambda*x_theta + psi ), dtype=np.float32)
+    
+    filtered = cv.filter2D(myImg.data, cv.CV_32F,gb_values)
+    return filtered
 
 def main(in_file=None):
     """Simulation of a retinal ipltant. The image can be selected, and the
@@ -230,11 +264,14 @@ def main(in_file=None):
     myImg = MyImages(in_file)
     Zones, Filters = make_zones_and_filters(myImg)
     filtered = apply_filters(myImg, Zones, Filters)
+    gabor_filtered = gabor_filter(myImg)
 
     # Show the results
     plt.imshow(filtered, "gray")
     plt.show()
-    myImg.save(filtered)
+    plt.imshow(gabor_filtered, "gray")
+    plt.show()
+    #myImg.save(filtered)
     print("Done!")
 
 

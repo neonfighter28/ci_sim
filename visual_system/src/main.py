@@ -222,13 +222,13 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         
         return im_out
     
-def gabor_filter(myImg):
+def gabor_filter(myImg, angle):
     
     sigma  = 1
-    theta = 1
-    g_lambda = 2
+    theta = angle
+    g_lambda = 0.5
     psi = np.pi/2
-    gamma = 0.5
+    gamma = 0.7
 
     sigma_x = sigma
     sigma_y = sigma/gamma
@@ -241,10 +241,14 @@ def gabor_filter(myImg):
     xmax = np.ceil(max(1,xmax))
     ymax = np.ceil(max(1,ymax))
     
+    xmax = 1
+    ymax = 1
     xmin = -xmax
     ymin = -ymax
+
     
-    numPts = 51   
+    
+    numPts = 21
     (x,y) = np.meshgrid(np.linspace(xmin, xmax, numPts), np.linspace(ymin, ymax, numPts) ) 
     
     # Rotation
@@ -252,9 +256,11 @@ def gabor_filter(myImg):
     y_theta = -x * np.sin(theta) + y * np.cos(theta)
     gb_values = np.array(np.exp( -0.5* (x_theta**2/sigma_x**2 + y_theta**2/sigma_y**2) ) * \
          np.cos( 2*np.pi/g_lambda*x_theta + psi ), dtype=np.float32)
+
+    gb_values = np.array(np.exp(-0.5*(x_theta**2+y_theta**2)/sigma**2)*np.cos(2.*np.pi*x_theta/g_lambda + psi),dtype=np.float32)
     
-    filtered = cv.filter2D(myImg.data, cv.CV_32F,gb_values)
-    return filtered
+    #filtered = cv.filter2D(myImg.data, cv.CV_32F, gb_values)
+    return gb_values
 
 def main(in_file=None):
     """Simulation of a retinal ipltant. The image can be selected, and the
@@ -264,14 +270,29 @@ def main(in_file=None):
     myImg = MyImages(in_file)
     Zones, Filters = make_zones_and_filters(myImg)
     filtered = apply_filters(myImg, Zones, Filters)
-    gabor_filtered = gabor_filter(myImg)
 
     # Show the results
     plt.imshow(filtered, "gray")
     plt.show()
-    plt.imshow(gabor_filtered, "gray")
+
     plt.show()
-    #myImg.save(filtered)
+    fig = plt.figure(figsize=(13, 8))
+    kernels = []
+    for i in range(6):
+        kernels.append(gabor_filter(myImg, np.pi/6 * i))
+        #fig.add_subplot(2, 3, i+1)
+        #plt.imshow(gabor_filtered, "gray")
+    
+    
+    filtered_array = np.array([cv.filter2D(myImg.data, cv.CV_32F, kernel) for kernel in kernels],
+                                   dtype=np.float32)
+       
+    #plt.show()
+    
+    gabor_sum = sum(filtered_array) / 1000000000
+    plt.imshow(gabor_sum, "gray")
+    plt.show()
+    myImg.save(gabor_sum)
     print("Done!")
 
 

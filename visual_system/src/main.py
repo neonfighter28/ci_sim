@@ -167,12 +167,15 @@ def make_zones_and_filters(myImg):
         sigma_2 = sigma_1 * 1.6
 
         # constructing convolution matrix of DOG
-        h = 30  # height
-        DOG_matrix = np.zeros((h, h))  # grid
-        for i in range(0, h):
-            for j in range(0, h):
-                x = i - h/2
-                y = j - h/2
+        conv_size = 30  # size of convolution matrix
+
+        #constructing convolution matrix for calculated sigmas
+        DOG_matrix = np.zeros((conv_size, conv_size))
+
+        for i in range(conv_size):
+            for j in range(conv_size):
+                x = i - conv_size/2
+                y = j - conv_size/2
                 DOG_matrix[i, j] = DOG(x, y, sigma_1, sigma_2)
 
         curFilter = DOG_matrix
@@ -204,6 +207,7 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
 
         # assuming kernel is symmetric and odd
         k_size = len(Filters[0])
+        half_k_size = int(k_size/2)
         m_height, m_width = myImg.size
         # pad so we don't get an out of bound exception
         padded = np.pad(myImg.data, (k_size-1, k_size-1))
@@ -213,10 +217,10 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         
         # iterates through matrix, applies kernel of correct zone, and sums
         im_out = []
-        for i in range(m_height):
-            for j in range(m_width):
+        for i in range(0, m_height):
+            for j in range(0, m_width):
                 kernel = Filters[Zones[i, j]]
-                im_out.append(np.sum(padded[k_size-1 + i:(2*k_size)+i -1, k_size-1 + j:(2*k_size)+j -1] * kernel))
+                im_out.append(np.sum(padded[half_k_size + i -1:k_size + i + half_k_size -1, half_k_size + j -1:k_size + j + half_k_size -1] * kernel))
         
         im_out = np.array(im_out).reshape((m_height, m_width))
         
@@ -289,7 +293,7 @@ def main(in_file=None):
        
     #plt.show()
     
-    gabor_sum = sum(filtered_array) / 1000000000
+    gabor_sum = sum(filtered_array)
     plt.imshow(gabor_sum, "gray")
     plt.show()
     myImg.save(gabor_sum)

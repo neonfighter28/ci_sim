@@ -41,10 +41,11 @@ class MyImages:
             self.fileName = sg.popup_get_file("", no_window=True)
         else:
             self.fileName = in_file
-        raw_data = plt.imread(self.fileName)
+        raw_data = cv.imread(self.fileName, cv.IMREAD_GRAYSCALE)
 
         if len(raw_data.shape) == 3:  # convert to grayscale
-            raw_data = color.rgb2gray(raw_data)
+            raw_data = cv.cvtColor(raw_data, cv.COLOR_RGB2GRAY)
+
 
         self.size = np.shape(raw_data)
         print(self.size)
@@ -68,11 +69,10 @@ class MyImages:
         self.focus.reverse()  # for working with the data x/y's
         print(self.focus)
     
-    def save(self, out_data):
+    def save(self, out_data, name):
         """Save the resulting image to a PNG-file"""
 
-        in_stem = self.fileName.find(".")
-        out_file = self.fileName[:in_stem] + "_out.png"
+        out_file = name + "_out.png"
         try:
             plt.imsave(out_file, out_data, cmap="gray")
             print(f"Result saved to {out_file}")
@@ -149,34 +149,34 @@ def make_zones_and_filters(myImg):
         zoneRad = ( rMax / numZones * (ii + 0.5))  
         # MY CODE
         # assume 1400px image = 30cm viewed from 60cm away
-        zoneRad_in_cm = (30 / 1400) * zoneRad
-        view_distance = 60 #cm
+        zoneRad_in_cm = (300 / 1400) * zoneRad
+        view_distance = 600 #mm
         angle = np.arctan(zoneRad_in_cm / view_distance)
 
         # radius of the eye is typically 125mm
         circumference = 2 * np.pi * 125
-        eccentricity = circumference / 360 * angle
+        eccentricity = circumference / 360 * angle 
         RFS = 6 * eccentricity #in arcmin
-        RFS_in_degrees = RFS / 60
-        RFS_in_pixels = (np.tan(RFS_in_degrees) * view_distance) * (1400 / 30)
         
+        RFS_in_degrees = RFS / 60
+        RFS_in_pixels = int((np.tan(RFS_in_degrees) * view_distance) * (1400 / 300))
         next_largest_odd = RFS_in_pixels if (RFS_in_pixels % 2 == 1) else RFS_in_pixels + 1
-
         # calculating DOG parameters based of RFS, keeping correct ratio of 1:1.6
         sigma_1 = next_largest_odd / 8
         sigma_2 = sigma_1 * 1.6
 
         # constructing convolution matrix of DOG
-        conv_size = 30  # size of convolution matrix
+        print(int(next_largest_odd))
+        conv_size = int(next_largest_odd) # size of convolution matrix
 
         #constructing convolution matrix for calculated sigmas
         DOG_matrix = np.zeros((conv_size, conv_size))
-
+        m_height, m_width = myImg.size
+        print("sig1:")
+        print(sigma_1)
         for i in range(conv_size):
             for j in range(conv_size):
-                x = i - conv_size/2
-                y = j - conv_size/2
-                DOG_matrix[i, j] = DOG(x, y, sigma_1, sigma_2)
+                DOG_matrix[i, j] = DOG(i, j, sigma_1, sigma_2)
 
         curFilter = DOG_matrix
 
@@ -206,21 +206,24 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         # ------------------- Here you have to apply the filters ------------
 
         # assuming kernel is symmetric and odd
-        k_size = len(Filters[0])
-        half_k_size = int(k_size/2)
+        k_size = len(Filters[9])
+    
         m_height, m_width = myImg.size
         # pad so we don't get an out of bound exception
-        padded = np.pad(myImg.data, (k_size-1, k_size-1))
+        padded = np.pad(myImg.data, (k_size, k_size), constant_values=0)
 
-        #plt.imshow(np.array(padded).reshape((m_height+2*k_size-2, m_width+2*k_size-2)), "gray")
+        #plt.imshow(padded, "gray")
         #plt.show()
         
         # iterates through matrix, applies kernel of correct zone, and sums
         im_out = []
-        for i in range(0, m_height):
-            for j in range(0, m_width):
-                kernel = Filters[Zones[i, j]]
-                im_out.append(np.sum(padded[half_k_size + i -1:k_size + i + half_k_size -1, half_k_size + j -1:k_size + j + half_k_size -1] * kernel))
+        for i in range(k_size, m_height + k_size):
+            for j in range(k_size, m_width + k_size):
+                kernel = Filters[Zones[i - k_size, j - k_size]]
+                temp_k_size = len(Filters[Zones[i - k_size, j - k_size]])
+                #brightness_factor is used to brighten up all zones except the middle so they dont get too dark
+                brightness_factor = 2.6 if not Zones[i- k_size, j - k_size] == 0 else 1
+                im_out.append(np.sum(padded[i:temp_k_size + i, j:temp_k_size + j] * kernel) * brightness_factor)
         
         im_out = np.array(im_out).reshape((m_height, m_width))
         
@@ -228,11 +231,11 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
     
 def gabor_filter(myImg, angle):
     
-    sigma  = 1
+    sigma  = 0.14
     theta = angle
-    g_lambda = 0.5
+    g_lambda = 0.25
     psi = np.pi/2
-    gamma = 0.7
+    gamma = 0.1
 
     sigma_x = sigma
     sigma_y = sigma/gamma
@@ -276,29 +279,41 @@ def main(in_file=None):
     filtered = apply_filters(myImg, Zones, Filters)
 
     # Show the results
-    plt.imshow(filtered, "gray")
-    plt.show()
-
-    plt.show()
     fig = plt.figure(figsize=(13, 8))
+    fig.add_subplot(1, 3, 1)
+    plt.imshow(myImg.data, "gray")
+    fig.add_subplot(1, 3, 2)
+
+    #normalize image brightness
+    
+    plt.imshow(filtered, "gray")
+    myImg.save(filtered, "DOG")
+
+    #fig = plt.figure(figsize=(13, 8))
     kernels = []
     for i in range(6):
         kernels.append(gabor_filter(myImg, np.pi/6 * i))
         #fig.add_subplot(2, 3, i+1)
         #plt.imshow(gabor_filtered, "gray")
     
-    
     filtered_array = np.array([cv.filter2D(myImg.data, cv.CV_32F, kernel) for kernel in kernels],
                                    dtype=np.float32)
-       
-    #plt.show()
     
+
+    #sum and adjust brightness because of summation
     gabor_sum = sum(filtered_array)
+    height, width = np.shape(gabor_sum)
+    for i in range(height):
+        for j in range(width):
+            if gabor_sum[i, j] <= 0:
+                gabor_sum[i, j] = 0
+            elif gabor_sum[i, j] >= 255:
+                gabor_sum[i, j] = 255
+    fig.add_subplot(1, 3, 3)
     plt.imshow(gabor_sum, "gray")
     plt.show()
-    myImg.save(gabor_sum)
+    myImg.save(gabor_sum, "Gabor")
     print("Done!")
-
 
 if __name__ == "__main__":
      main()

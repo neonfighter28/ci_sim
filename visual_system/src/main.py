@@ -79,20 +79,19 @@ class MyImages:
         except IOError:
             print(f"Could not save {out_file}")
 
-
-
 ### retinal activity
-#Step 1: Find farthest corner
-#Step 2: Divide distance into 10 zones
-#Step 3: for each zone: Find average radius
-#Step 4: for each zone: calculate eccentricity
-#Step 5: for each zone: calculate RFS (rfs = 6 * eccentricity)
-#Step 6: for each zone: Sigma_1 = RFS / 8
-#Step 7: for each zone: Sigma_2 = 1.6 * Sigma_1
-#Step 8: for each zone: calculate and apply corresponding DOG function using Sigma_1 and Sigma_2
+# Step 1: Find farthest corner
+# Step 2: Divide distance into 10 zones
+# Step 3: for each zone: Find average radius
+# Step 4: for each zone: calculate eccentricity
+# Step 5: for each zone: calculate RFS (rfs = 6 * eccentricity)
+# Step 6: for each zone: Sigma_1 = RFS / 8
+# Step 7: for each zone: Sigma_2 = 1.6 * Sigma_1
+# Step 8: for each zone: calculate and apply corresponding DoG function using Sigma_1 and Sigma_2
 
 ### primary visual cortex activity
-#Step 1: Using original image, apply Gabor filters in different orientations (0 - 30 - 60 - 90 - 120 - 150 deg)
+# Step 1: Using original image, apply Gabor filters in different orientations (0 - 30 - 60 - 90 - 120 - 150 deg)
+# Step 2: Sum the resulting images to obtain the final image
 
 ### functions for retinal activity
 def gaussian(x, y, sigma):
@@ -161,26 +160,21 @@ def make_zones_and_filters(myImg):
         RFS_in_degrees = RFS / 60
         RFS_in_pixels = int((np.tan(RFS_in_degrees) * view_distance) * (1400 / 300))
         next_largest_odd = RFS_in_pixels if (RFS_in_pixels % 2 == 1) else RFS_in_pixels + 1
-        # calculating DOG parameters based of RFS, keeping correct ratio of 1:1.6
+        # Calculating DOG parameters based of RFS, keeping correct ratio of 1:1.6
         sigma_1 = next_largest_odd / 8
         sigma_2 = sigma_1 * 1.6
 
-        # constructing convolution matrix of DOG
-        print(int(next_largest_odd))
         conv_size = int(next_largest_odd) # size of convolution matrix
 
-        #constructing convolution matrix for calculated sigmas
+        # Constructing convolution matrix for calculated sigmas
         DOG_matrix = np.zeros((conv_size, conv_size))
         m_height, m_width = myImg.size
-        print("sig1:")
-        print(sigma_1)
+
         for i in range(conv_size):
             for j in range(conv_size):
                 DOG_matrix[i, j] = DOG(i, j, sigma_1, sigma_2)
 
         curFilter = DOG_matrix
-
-        #print(curFilter)
         Filters.append(curFilter)
 
     return (Zones, Filters)
@@ -211,9 +205,6 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         m_height, m_width = myImg.size
         # pad so we don't get an out of bound exception
         padded = np.pad(myImg.data, (k_size, k_size), constant_values=0)
-
-        #plt.imshow(padded, "gray")
-        #plt.show()
         
         # iterates through matrix, applies kernel of correct zone, and sums
         im_out = []
@@ -221,8 +212,8 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
             for j in range(k_size, m_width + k_size):
                 kernel = Filters[Zones[i - k_size, j - k_size]]
                 temp_k_size = len(Filters[Zones[i - k_size, j - k_size]])
-                #brightness_factor is used to brighten up all zones except the middle so they dont get too dark
-                brightness_factor = 2.6 if not Zones[i- k_size, j - k_size] == 0 else 1
+                # brightness_factor is used to brighten up all zones except the middle so they dont get too dark
+                brightness_factor = 2.8 if not Zones[i- k_size, j - k_size] == 0 else 1
                 im_out.append(np.sum(padded[i:temp_k_size + i, j:temp_k_size + j] * kernel) * brightness_factor)
         
         im_out = np.array(im_out).reshape((m_height, m_width))
@@ -231,11 +222,12 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
     
 def gabor_filter(myImg, angle):
     
+    # constants to use for the gabor filter, determined through experimentation
     sigma  = 0.14
     theta = angle
     g_lambda = 0.25
     psi = np.pi/2
-    gamma = 0.1
+    gamma = 0.5
 
     sigma_x = sigma
     sigma_y = sigma/gamma
@@ -252,10 +244,8 @@ def gabor_filter(myImg, angle):
     ymax = 1
     xmin = -xmax
     ymin = -ymax
-
     
-    
-    numPts = 21
+    numPts = 25
     (x,y) = np.meshgrid(np.linspace(xmin, xmax, numPts), np.linspace(ymin, ymax, numPts) ) 
     
     # Rotation
@@ -265,43 +255,45 @@ def gabor_filter(myImg, angle):
          np.cos( 2*np.pi/g_lambda*x_theta + psi ), dtype=np.float32)
 
     gb_values = np.array(np.exp(-0.5*(x_theta**2+y_theta**2)/sigma**2)*np.cos(2.*np.pi*x_theta/g_lambda + psi),dtype=np.float32)
-    
-    #filtered = cv.filter2D(myImg.data, cv.CV_32F, gb_values)
+
     return gb_values
 
 def main(in_file=None):
     """Simulation of a retinal ipltant. The image can be selected, and the
     fixation point is chosen interactively by the user."""
 
-    # Select the image, and perform the calculations
+    # Select the image
     myImg = MyImages(in_file)
+
+    # Calculate retinal activity
     Zones, Filters = make_zones_and_filters(myImg)
     filtered = apply_filters(myImg, Zones, Filters)
 
-    # Show the results
+    # Add the results to a plot to be shown later
     fig = plt.figure(figsize=(13, 8))
     fig.add_subplot(1, 3, 1)
     plt.imshow(myImg.data, "gray")
     fig.add_subplot(1, 3, 2)
-
-    #normalize image brightness
-    
     plt.imshow(filtered, "gray")
+
+    # Save result of retinal activity
     myImg.save(filtered, "DOG")
 
-    #fig = plt.figure(figsize=(13, 8))
+    # Calculating gabor filters from angles (0, 30, 60, 90, 120, 150)
     kernels = []
     for i in range(6):
         kernels.append(gabor_filter(myImg, np.pi/6 * i))
-        #fig.add_subplot(2, 3, i+1)
-        #plt.imshow(gabor_filtered, "gray")
     
+    # Applying the filters and saving the different outputs to an array
     filtered_array = np.array([cv.filter2D(myImg.data, cv.CV_32F, kernel) for kernel in kernels],
                                    dtype=np.float32)
     
-
-    #sum and adjust brightness because of summation
+    # Sum to put together the different images
     gabor_sum = sum(filtered_array)
+
+    # Reducing value range to the typical 0 to 255 to increase contrast.
+    # This has to be done since matplotlib will otherwise try to compress a huge value range down to numbers between 0 and 1, causing the resulting image to be mostly gray.
+    # 0 to 255 works because that is the format our original preprocessed image is in.
     height, width = np.shape(gabor_sum)
     for i in range(height):
         for j in range(width):
@@ -309,9 +301,12 @@ def main(in_file=None):
                 gabor_sum[i, j] = 0
             elif gabor_sum[i, j] >= 255:
                 gabor_sum[i, j] = 255
+    
+    # Showing the results
     fig.add_subplot(1, 3, 3)
     plt.imshow(gabor_sum, "gray")
     plt.show()
+    # Saving the output for the primary visual cortex activity
     myImg.save(gabor_sum, "Gabor")
     print("Done!")
 

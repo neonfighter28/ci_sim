@@ -1,7 +1,8 @@
 numpy
-scikit-sound
 opencv-python
 scipy
-pygame
-mypy
 matplotlib
+PySimpleGUI
+scikit-image
+
+

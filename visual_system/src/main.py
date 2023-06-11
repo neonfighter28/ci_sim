@@ -1,3 +1,32 @@
+"""
+Simulation of the visual System
+The program lets the user select an input image and excecutes the following steps
+to simulate both the retinal and the primary visual cortex acitivty.
+
+### retinal activity
+# Step 1: Find farthest corner
+# Step 2: Divide distance into 10 zones
+# Step 3: for each zone: Find average radius
+# Step 4: for each zone: calculate eccentricity
+# Step 5: for each zone: calculate RFS (rfs = 6 * eccentricity)
+# Step 6: for each zone: Sigma_1 = RFS / 8
+# Step 7: for each zone: Sigma_2 = 1.6 * Sigma_1
+# Step 8: for each zone: calculate and apply corresponding DoG function using Sigma_1 and Sigma_2
+
+### primary visual cortex activity
+# Step 1: Using original image, apply Gabor filters in different orientations (0 - 30 - 60 - 90 - 120 - 150 deg)
+# Step 2: Sum the resulting images to obtain the final image
+
+The results are first shown on screen and then saved as "DOG_out.png" and "Gabor_out.png" respectively in the excercise folder
+
+Authors: Cedric Koller, Elias Csuka, Leander Hemmi
+v2.0.0 (11.06.23)
+# Run with `python Ex3_Visual.py`
+Developed and tested with Python 3.11.4
+"""
+
+
+# Import required packages
 import PySimpleGUI as sg
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -79,19 +108,7 @@ class MyImages:
         except IOError:
             print(f"Could not save {out_file}")
 
-### retinal activity
-# Step 1: Find farthest corner
-# Step 2: Divide distance into 10 zones
-# Step 3: for each zone: Find average radius
-# Step 4: for each zone: calculate eccentricity
-# Step 5: for each zone: calculate RFS (rfs = 6 * eccentricity)
-# Step 6: for each zone: Sigma_1 = RFS / 8
-# Step 7: for each zone: Sigma_2 = 1.6 * Sigma_1
-# Step 8: for each zone: calculate and apply corresponding DoG function using Sigma_1 and Sigma_2
 
-### primary visual cortex activity
-# Step 1: Using original image, apply Gabor filters in different orientations (0 - 30 - 60 - 90 - 120 - 150 deg)
-# Step 2: Sum the resulting images to obtain the final image
 
 ### functions for retinal activity
 def gaussian(x, y, sigma):
@@ -143,6 +160,7 @@ def make_zones_and_filters(myImg):
 
     # ------------------- Here you have to find your own filters ------------
     # ------------------- this is just a demo! ------------
+    print("Constructing DoG filters...")
     for ii in range(numZones):
         # eccentricity = average radius in a zone, in pixel
         zoneRad = ( rMax / numZones * (ii + 0.5))  
@@ -169,7 +187,6 @@ def make_zones_and_filters(myImg):
         # Constructing convolution matrix for calculated sigmas
         DOG_matrix = np.zeros((conv_size, conv_size))
         m_height, m_width = myImg.size
-
         for i in range(conv_size):
             for j in range(conv_size):
                 DOG_matrix[i, j] = DOG(i, j, sigma_1, sigma_2)
@@ -207,8 +224,11 @@ def apply_filters(myImg, Zones, Filters, openCV=True):
         padded = np.pad(myImg.data, (k_size, k_size), constant_values=0)
         
         # iterates through matrix, applies kernel of correct zone, and sums
+        print("Applying DoG filters...")
         im_out = []
         for i in range(k_size, m_height + k_size):
+            if i%30 == 0:
+                print(f"{round(i / (m_height + k_size) * 100, 0)}% done")
             for j in range(k_size, m_width + k_size):
                 kernel = Filters[Zones[i - k_size, j - k_size]]
                 temp_k_size = len(Filters[Zones[i - k_size, j - k_size]])
@@ -280,11 +300,13 @@ def main(in_file=None):
     myImg.save(filtered, "DOG")
 
     # Calculating gabor filters from angles (0, 30, 60, 90, 120, 150)
+    print("Constructing Gabor filters...")
     kernels = []
     for i in range(6):
         kernels.append(gabor_filter(myImg, np.pi/6 * i))
     
     # Applying the filters and saving the different outputs to an array
+    print("Applying Gabor filters...")
     filtered_array = np.array([cv.filter2D(myImg.data, cv.CV_32F, kernel) for kernel in kernels],
                                    dtype=np.float32)
     
